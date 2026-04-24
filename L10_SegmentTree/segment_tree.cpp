@@ -1,73 +1,115 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-class SegmentTree {
-    vector<int> seg;
+vector<int> arr(1000);
+vector<int> seg(4000);
+vector<int> lazy(4000);
+
+// Build segment tree
+void build(int idx, int low, int high){
+    if(low == high){
+        seg[idx] = arr[low];
+        return;
+    }
+
+    int mid = (low + high) / 2;
+
+    build(2*idx + 1, low, mid);
+    build(2*idx + 2, mid + 1, high);
+
+    seg[idx] = max(seg[2*idx + 1], seg[2*idx + 2]);
+}
+
+// PUSH function (fixes applied)
+void push(int idx, int low, int high){
+    if(lazy[idx] != 0){
+        seg[idx] += lazy[idx];
+
+        if(low != high){
+            lazy[2*idx + 1] += lazy[idx];
+            lazy[2*idx + 2] += lazy[idx];
+        }
+
+        lazy[idx] = 0;  // IMPORTANT FIX
+    }
+}
+
+// Range maximum query with lazy
+int query(int idx, int low, int high, int l, int r){
+
+    push(idx, low, high);  // IMPORTANT
+
+    // No overlap
+    if(high < l || low > r){
+        return INT_MIN;
+    }
+
+    // Complete overlap
+    if(low >= l && high <= r){
+        return seg[idx];
+    }
+
+    int mid = (low + high) / 2;
+
+    int left = query(2*idx + 1, low, mid, l, r);
+    int right = query(2*idx + 2, mid + 1, high, l, r);
+
+    return max(left, right);
+}
+
+// Range update (add val)
+void updateRange(int idx, int low, int high, int l, int r, int val){
+
+    push(idx, low, high);  // IMPORTANT
+
+    // No overlap
+    if(high < l || low > r)
+        return;
+
+    // Complete overlap
+    if(low >= l && high <= r){
+        lazy[idx] += val;
+        push(idx, low, high);
+        return;
+    }
+
+    int mid = (low + high) / 2;
+
+    updateRange(2*idx + 1, low, mid, l, r, val);
+    updateRange(2*idx + 2, mid + 1, high, l, r, val);
+
+    // IMPORTANT: update current node
+    seg[idx] = max(seg[2*idx + 1], seg[2*idx + 2]);
+}
+
+int main(){
     int n;
+    cin >> n;
 
-public:
-    SegmentTree(int n) {
-        this->n = n;
-        seg.resize(4 * n); 
+    for(int i = 0; i < n; i++){
+        cin >> arr[i];
     }
 
-    // Build the tree
-    void build(int ind, int low, int high, vector<int>& arr) {
-        if (low == high) {
-            seg[ind] = arr[low];
-            return;
-        }
+    build(0, 0, n - 1);
 
-        int mid = (low + high) / 2;
-        build(2 * ind + 1, low, mid, arr);
-        build(2 * ind + 2, mid + 1, high, arr);
+    int q;
+    cin >> q;
 
-        seg[ind] = seg[2 * ind + 1] + seg[2 * ind + 2];
+    while(q--){
+        int l, r;
+        cin >> l >> r;
+        cout << query(0, 0, n - 1, l, r) << "\n";
     }
 
-    // Query sum in range [l, r]
-    int query(int ind, int low, int high, int l, int r) {
-        // No overlap
-        if (high < l || low > r) return 0;
+    // Example update
+    updateRange(0, 0, n - 1, 3, 5, 10);
 
-        // Complete overlap
-        if (low >= l && high <= r) return seg[ind];
-
-        // Partial overlap
-        int mid = (low + high) / 2;
-        int left = query(2 * ind + 1, low, mid, l, r);
-        int right = query(2 * ind + 2, mid + 1, high, l, r);
-
-        return left + right;
+    cin >> q;
+    while(q--){
+        int l, r;
+        cin >> l >> r;
+        cout << query(0, 0, n - 1, l, r) << "\n";
     }
-
-    // Update value at index i
-    void update(int ind, int low, int high, int i, int val) {
-        if (low == high) {
-            seg[ind] = val;
-            return;
-        }
-
-        int mid = (low + high) / 2;
-        if (i <= mid)
-            update(2 * ind + 1, low, mid, i, val);
-        else
-            update(2 * ind + 2, mid + 1, high, i, val);
-
-        seg[ind] = seg[2 * ind + 1] + seg[2 * ind + 2];
-    }
-};
-
-int main() {
-    vector<int> arr = {1, 3, 5, 7, 9, 11};
-    int n = arr.size();
-
-    SegmentTree st(n);
-    st.build(0, 0, n - 1, arr);
-    cout << "Sum [1,3]: " << st.query(0, 0, n - 1, 1, 3) << endl;
-
-    st.update(0, 0, n - 1, 1, 10); 
-    cout << "After update, Sum [1,3]: " << st.query(0, 0, n - 1, 1, 3) << endl;
 
     return 0;
 }
